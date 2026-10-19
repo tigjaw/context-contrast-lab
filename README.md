@@ -22,6 +22,8 @@ The launcher creates a private Python environment inside the project folder the 
 
 If Windows says Python is missing, install Python 3.10 or newer from [python.org](https://www.python.org/downloads/windows/) and enable **Add Python to PATH** during setup. Then double-click the launcher again.
 
+If the launcher displays the Python message, pressing a key only closes that message; it does not install Python or resume startup. To check an existing installation, open a new Command Prompt and run `py --version`. If that command is not found, install Python as described above. After installation, double-click the launcher again.
+
 ### Optional: run from a terminal
 
 If you prefer to start the app manually, open PowerShell in this folder and run:
@@ -56,4 +58,3 @@ context-contrast-lab/
 ├── requirements.txt
 └── README.md
 ```
-
