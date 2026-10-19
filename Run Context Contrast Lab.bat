@@ -11,11 +11,11 @@ if not defined PYTHON (
 )
 
 if not defined PYTHON (
-    echo Python 3.10 or newer is required.
-    echo Install Python from https://www.python.org/downloads/windows/ and enable Add Python to PATH.
-    pause
-    exit /b 1
+    goto python_missing
 )
+
+%PYTHON% -c "import sys; raise SystemExit(sys.version_info < (3, 10))" >nul 2>nul
+if errorlevel 1 goto python_missing
 
 if not exist ".venv\Scripts\python.exe" (
     echo Setting up the app's private Python environment...
@@ -36,4 +36,12 @@ exit /b 0
 echo.
 echo The app could not start. Check the message above and try again.
 pause
+exit /b 1
+
+:python_missing
+echo Python 3.10 or newer was not found, or the detected version is too old.
+echo Install or update Python from https://www.python.org/downloads/windows/
+echo During installation, enable Add Python to PATH. Then close this window and run this file again.
+echo Press any key to close this message.
+pause >nul
 exit /b 1
