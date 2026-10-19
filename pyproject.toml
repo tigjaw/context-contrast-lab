@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "context-contrast-lab"
+version = "1.0.0"
+description = "Edge-aware contextual local contrast for photos and screenshots"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.26,<3", "Pillow>=10,<13"]
+
+[project.scripts]
+context-contrast-lab = "context_contrast_lab.app:main"
+
+[tool.setuptools.packages.find]
+include = ["context_contrast_lab*"]
