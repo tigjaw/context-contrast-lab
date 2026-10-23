@@ -24,6 +24,7 @@ class App(tk.Tk):
         self.processed: np.ndarray | None = None
         self.source_path: Path | None = None
         self._photo = None
+        self._image_rect = None
         self._job = None
         self._after_id = None
         self._job_running = False
@@ -87,6 +88,9 @@ class App(tk.Tk):
         self.canvas.pack(fill="both", expand=True)
         self.canvas.bind("<Configure>", lambda _e: self.render())
         self.canvas.bind("<Button-1>", self._canvas_click)
+        self.canvas.bind("<B1-Motion>", self._canvas_drag)
+        self.canvas.bind("<Motion>", self._canvas_motion)
+        self.canvas.bind("<Leave>", lambda _e: self.canvas.configure(cursor=""))
         self.status = ttk.Label(self, text="Open a photo or screenshot to begin.", anchor="w", padding=(16, 6), style="Muted.TLabel")
         self.status.pack(fill="x", side="bottom")
 
@@ -142,8 +146,30 @@ class App(tk.Tk):
         if rerun: self.schedule_process(immediate=True)
 
     def _canvas_click(self, event) -> None:
-        if self.original is not None and self.mode.get() == "Split":
-            self.split_var.set(np.clip(event.x / max(self.canvas.winfo_width(), 1), 0, 1)); self.render()
+        if self.original is not None and self.mode.get() == "Split" and self.processed is not None:
+            self._set_split_from_canvas_x(event.x)
+
+    def _canvas_drag(self, event) -> None:
+        if self.original is not None and self.mode.get() == "Split" and self.processed is not None:
+            self._set_split_from_canvas_x(event.x)
+
+    def _set_split_from_canvas_x(self, canvas_x: int) -> None:
+        if self._image_rect is None:
+            return
+        image_x, _image_y, image_width, _image_height = self._image_rect
+        position = np.clip((canvas_x - image_x) / max(image_width, 1), 0, 1)
+        self.split_var.set(float(position))
+        self.render()
+
+    def _canvas_motion(self, event) -> None:
+        if self.mode.get() != "Split" or self.processed is None or self._image_rect is None:
+            self.canvas.configure(cursor="")
+            return
+        image_x, image_y, image_width, image_height = self._image_rect
+        divider_x = image_x + int(image_width * self.split_var.get())
+        over_image = image_y <= event.y <= image_y + image_height
+        over_divider = abs(event.x - divider_x) <= 7
+        self.canvas.configure(cursor="sb_h_double_arrow" if over_image and over_divider else "")
 
     def render(self) -> None:
         if self.original is None: return
@@ -162,6 +188,7 @@ class App(tk.Tk):
         self._photo = ImageTk.PhotoImage(image)
         self.canvas.delete("all")
         ox, oy = (cw - size[0]) // 2, (ch - size[1]) // 2
+        self._image_rect = (ox, oy, size[0], size[1])
         self.canvas.create_image(ox, oy, image=self._photo, anchor="nw")
         if self.mode.get() == "Split" and self.processed is not None:
             sx = ox + int(size[0] * self.split_var.get())
