@@ -13,6 +13,34 @@ from PIL import Image, ImageTk, ImageOps
 from .processor import Settings, process_image
 
 
+class Tooltip:
+    """Small hover hint for Tkinter controls."""
+
+    def __init__(self, widget, text: str) -> None:
+        self.widget = widget
+        self.text = text
+        self.window = None
+        widget.bind("<Enter>", self.show, add="+")
+        widget.bind("<Leave>", self.hide, add="+")
+
+    def show(self, _event=None) -> None:
+        if self.window is not None:
+            return
+        x = self.widget.winfo_pointerx() + 14
+        y = self.widget.winfo_pointery() + 14
+        self.window = window = tk.Toplevel(self.widget)
+        window.wm_overrideredirect(True)
+        window.wm_geometry(f"+{x}+{y}")
+        tk.Label(window, text=self.text, justify="left", wraplength=320,
+                 padx=9, pady=7, bg="#303642", fg="#f3f4f6",
+                 relief="solid", borderwidth=1, font=("Segoe UI", 9)).pack()
+
+    def hide(self, _event=None) -> None:
+        if self.window is not None:
+            self.window.destroy()
+            self.window = None
+
+
 class App(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
@@ -62,23 +90,45 @@ class App(tk.Tk):
             ("noise_protection", "Noise protection", 0, 1, .7),
             ("context", "Context adaptation", 0, 1, .25),
         ]
+        slider_help = {
+            "amount": "Overall strength of the effect. At zero the image is unchanged; raising it makes the other adjustments more noticeable.",
+            "radius": "Shifts all three detail ranges together. Lower values target smaller features; higher values move the effect toward larger features. The Fine, Medium, and Broad sliders control the strength within those ranges.",
+            "fine_detail": "Controls tiny texture and edges, such as skin texture, grass, or grain. Strong fine detail can make noise more visible; Noise protection can reduce that.",
+            "mid_detail": "Controls mid-sized features, such as folds, markings, and surface patterns.",
+            "coarse_detail": "Controls broader variations, such as shading across a face or landscape.",
+            "edge_protection": "Reduces the effect near strong edges to help avoid bright or dark outlines. More protection can also soften the contrast boost at those edges.",
+            "noise_protection": "Limits boosting of fine grain and compression speckles, especially in flatter areas. It can balance stronger Fine detail.",
+            "context": "Adds subtle contrast based on how bright an area is compared with its surroundings. It can help separate shadow or highlight details; Contrast amount controls its overall strength.",
+        }
         for key, label, lo, hi, val in slider_defs:
             row = ttk.Frame(controls, style="Panel.TFrame"); row.pack(fill="x", pady=5)
             head = ttk.Frame(row, style="Panel.TFrame"); head.pack(fill="x")
-            ttk.Label(head, text=label, style="Panel.TLabel").pack(side="left")
+            label_widget = ttk.Label(head, text=label, style="Panel.TLabel")
+            label_widget.pack(side="left")
+            Tooltip(label_widget, slider_help[key])
             var = tk.DoubleVar(value=val); self.vars[key] = var
             value_label = ttk.Label(head, text=f"{val:.2f}", style="Panel.TLabel"); value_label.pack(side="right")
             slider = ttk.Scale(row, from_=lo, to=hi, variable=var, command=lambda _v, v=value_label, x=var: (v.configure(text=f"{x.get():.2f}"), self.schedule_process()))
             slider.pack(fill="x", pady=(3, 0))
+            Tooltip(slider, slider_help[key])
         ttk.Separator(controls).pack(fill="x", pady=11)
         self.mode = tk.StringVar(value="Split")
         ttk.Label(controls, text="Comparison", style="Panel.TLabel").pack(anchor="w")
         mode_row = ttk.Frame(controls, style="Panel.TFrame"); mode_row.pack(fill="x", pady=(5, 8))
+        mode_help = {
+            "Split": "Compare original on the left with processed on the right. Click or drag the divider across the image.",
+            "Original": "Show the unedited image.",
+            "Processed": "Show the enhanced image.",
+        }
         for label in ("Split", "Original", "Processed"):
-            ttk.Radiobutton(mode_row, text=label, value=label, variable=self.mode, command=self.render).pack(side="left", padx=(0, 4))
+            radio = ttk.Radiobutton(mode_row, text=label, value=label, variable=self.mode, command=self.render)
+            radio.pack(side="left", padx=(0, 4))
+            Tooltip(radio, mode_help[label])
         self.split_var = tk.DoubleVar(value=.5)
         ttk.Label(controls, text="Split position", style="Panel.TLabel").pack(anchor="w")
-        ttk.Scale(controls, from_=0, to=1, variable=self.split_var, command=lambda _v: self.render()).pack(fill="x", pady=(3, 10))
+        split_slider = ttk.Scale(controls, from_=0, to=1, variable=self.split_var, command=lambda _v: self.render())
+        split_slider.pack(fill="x", pady=(3, 10))
+        Tooltip(split_slider, "Moves the before/after divider. You can also click or drag the divider directly on the image.")
         actions = ttk.Frame(controls, style="Panel.TFrame"); actions.pack(fill="x", pady=(6, 0))
         ttk.Button(actions, text="Reset", command=self.reset).pack(side="left")
         ttk.Button(actions, text="Export…", command=self.export_image, style="Accent.TButton").pack(side="right")
